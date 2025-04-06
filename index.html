@@ -1,0 +1,208 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Réservation Coiffeur Homme</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 40px;
+      min-height: 100vh;
+    }
+
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      max-width: 500px;
+      width: 100%;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 25px;
+      color: #333;
+    }
+
+    input, button, .time-buttons {
+      width: 100%;
+      margin-bottom: 15px;
+    }
+
+    input {
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+
+    .time-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .time-buttons button {
+      flex: 1 0 30%;
+      padding: 10px;
+      font-size: 14px;
+      border: none;
+      border-radius: 8px;
+      background-color: #eee;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .time-buttons button.selected {
+      background-color: #1e90ff;
+      color: white;
+    }
+
+    .time-buttons button.disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    .error {
+      color: red;
+      text-align: center;
+      margin-top: -10px;
+      margin-bottom: 10px;
+    }
+
+    .success {
+      color: green;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    button.submit-btn {
+      background-color: #28a745;
+      color: white;
+      font-size: 18px;
+      font-weight: bold;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button.submit-btn:hover {
+      background-color: #218838;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2>Réserver une Coupe Homme</h2>
+    <form id="reservationForm">
+      <input type="text" name="nom" placeholder="Nom complet" required>
+      <input type="tel" name="telephone" placeholder="Téléphone" required>
+      <input type="email" name="email" placeholder="Email" required>
+      <input type="date" name="date" required>
+
+      <label>Choisir une heure :</label>
+      <div class="time-buttons" id="timeButtons"></div>
+      <div class="error" id="errorMessage"></div>
+      <div class="success" id="successMessage"></div>
+
+      <button type="submit" class="submit-btn">RÉSERVER</button>
+    </form>
+  </div>
+
+  <script>
+    const reservedTimes = ['10:00', '13:30', '16:00']; // heures déjà réservées (simulées)
+    const timeButtonsContainer = document.getElementById('timeButtons');
+    const errorMessage = document.getElementById('errorMessage');
+    const successMessage = document.getElementById('successMessage');
+    let selectedTime = null;
+
+    // Générer les heures de 08:00 à 21:00 par pas de 30min
+    function generateTimeButtons() {
+      for (let hour = 8; hour <= 21; hour++) {
+        for (let min = 0; min < 60; min += 30) {
+          const h = hour.toString().padStart(2, '0');
+          const m = min.toString().padStart(2, '0');
+          const time = `${h}:${m}`;
+
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = time;
+          btn.value = time;
+
+          if (reservedTimes.includes(time)) {
+            btn.classList.add('disabled');
+            btn.disabled = true;
+          }
+
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.time-buttons button').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            selectedTime = time;
+            errorMessage.textContent = '';
+          });
+
+          timeButtonsContainer.appendChild(btn);
+        }
+      }
+    }
+
+    generateTimeButtons();
+
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbzCkXx7B1a-DlNzx_N8sFSVddzxallbcPPomsa5GIKbzG21gwCkZg-GgF_DP3Rp7vfiqQ/exec';  // Remplace par ton URL Apps Script
+
+    document.getElementById('reservationForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      if (!selectedTime) {
+        errorMessage.textContent = 'Veuillez sélectionner une heure.';
+        successMessage.textContent = '';
+        return;
+      }
+
+      const formData = new FormData(this);
+      const data = {
+        nom: formData.get('nom'),
+        telephone: formData.get('telephone'),
+        email: formData.get('email'),
+        date: formData.get('date'),
+        heure: selectedTime
+      };
+
+      fetch(scriptURL, {
+        method: 'POST',
+        body: JSON.stringify(data),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(response => response.json())
+      .then(result => {
+        if (result.success) {
+          successMessage.textContent = `Réservation confirmée à ${selectedTime} ! Un email de confirmation a été envoyé.`;
+          errorMessage.textContent = '';
+          this.reset();
+          document.querySelectorAll('.time-buttons button').forEach(b => b.classList.remove('selected'));
+          selectedTime = null;
+        } else {
+          errorMessage.textContent = result.message || "Erreur lors de la réservation.";
+          successMessage.textContent = '';
+        }
+      })
+      .catch(error => {
+        console.error(error);
+        errorMessage.textContent = "Erreur de connexion. Réessayez plus tard.";
+      });
+    });
+  </script>
+
+</body>
+</html>
